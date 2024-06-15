@@ -7,7 +7,10 @@ Infinity Beer Dispenser project.
 
 Run the face extraction model and return information for the largest face in the image.
 
-**Input**: The raw image file, as bytes, should be sent as a POST request. JPEG or PNG should be fine.
+**Input**: JSON document to be sent as a POST request to the inspect endpoint, with the following structure:
+
+- `op` (string): Literal `detectface`
+- `image` (string): Base64 representation of the raw image file. JPEG or PNG should be fine.
 
 **Outputs**:
 
@@ -17,6 +20,7 @@ Run the face extraction model and return information for the largest face in the
   - `embedding` (string): A base64 representation of the 512-dimensions embedding of the face
   - `match` (object or `null`): A match with an existing wallet, if found. The fields are:
     - `wallet`: Wallet address
+    - `distance`: Distance to the matched wallet
     - `balance`: Wallet balance
 
 ## Register Face (Advance)

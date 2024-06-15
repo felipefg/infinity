@@ -38,6 +38,27 @@ def handle_dispense_beer(rollup: Rollup, data: RollupData):
     rollup.report(str2hex(json.dumps(result)))
 
 
+@json_router.inspect({"op": "detectface"})
+def handle_detectface(rollup: Rollup, data: RollupData) -> bool:
+    import numpy as np
+    import base64
+    vec = np.zeros(shape=(512,), dtype='float16')
+    vec = base64.b64encode(vec.tobytes()).decode('ascii')
+
+    match = {
+        "pixels": 130544,
+        "confidence": 0.9998,
+        "embedding": vec,
+        "match": {
+            "wallet": "0xdeadbeef9d603c29af07a9b54b13f3e2deadbeef",
+            "distance": 0.35,
+            "balance": 9,
+        }
+    }
+    rollup.report(str2hex(json.dumps(match)))
+    return True
+
+
 # Default routes, in case any of the above match
 @dapp.advance()
 def handle_advance(rollup: Rollup, data: RollupData) -> bool:
