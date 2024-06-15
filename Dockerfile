@@ -14,7 +14,7 @@ RUN <<EOF
 set -e
 apt-get update
 apt-get install -y --no-install-recommends \
-  busybox-static ca-certificates curl git build-essential
+  busybox-static ca-certificates curl git build-essential libopenblas0-serial
 rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/*
 useradd --create-home --user-group dapp
 EOF
