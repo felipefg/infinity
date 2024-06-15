@@ -69,6 +69,7 @@ Example:
 
 - Notice 0: JSON with the following fields:
   - `wallet` (string): Matched wallet address
+  - `distance` (float): Distance of the matched vector
   - `balance` (int): New balance after this operation
   - `dispense` (bool): True or False if the beer should be dispensed.
 
