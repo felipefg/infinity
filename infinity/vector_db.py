@@ -1,6 +1,7 @@
 """
 Simple in-memory vector db for Infinity Project
 """
+import base64
 import numpy as np
 from numpy.typing import NDArray
 
@@ -34,7 +35,14 @@ class VectorDB:
         self.vectors = np.append(self.vectors, vector, axis=0)
         self.keys.append(key)
 
-    def get_nearest_key(self, vector: NDArray) -> tuple[str, float]:
+    def get_nearest_key(
+        self,
+        vector: NDArray,
+        threshold: float = 0.7
+    ) -> tuple[str, float] | None:
+
+        if self.vectors.shape[0] == 0:
+            return None
 
         vector = self._ensure_mat(vector)
 
@@ -43,4 +51,16 @@ class VectorDB:
 
         nearest = dist.argmin()
 
-        return self.keys[nearest], dist[nearest]
+        if dist[nearest] > threshold:
+            return None
+
+        return self.keys[nearest], float(dist[nearest])
+
+
+def parse_embedding(b64_embedding: str, dtype: str = 'float16') -> NDArray:
+    emb_bytes = base64.b64decode(b64_embedding)
+    vec = np.frombuffer(emb_bytes, dtype=dtype)
+    return vec
+
+
+vdb = VectorDB()

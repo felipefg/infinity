@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from cartesi import DApp, Rollup, RollupData, JSONRouter
 
 from .model import model, format_embedding
+from .vector_db import vdb, parse_embedding
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -18,9 +19,24 @@ def str2hex(str):
     return "0x" + str.encode("utf-8").hex()
 
 
+class RegisterFaceInput(BaseModel):
+    op: str
+    wallet: str
+    embedding: str
+    init_balance: int = 10
+
+
 @json_router.advance({"op": "register_face"})
 def handle_register_face(rollup: Rollup, data: RollupData):
-    # TODO: Add face to DB
+    payload = RegisterFaceInput.parse_obj(data.json_payload())
+
+    wallet = payload.wallet.lower()
+    vec = parse_embedding(payload.embedding)
+
+    vdb.add_vector(key=wallet, vector=vec)
+
+    # TODO register balance
+
     result = {"status": "ok", "msg": "Mock Implementation Successful"}
     rollup.report(str2hex(json.dumps(result)))
 
@@ -54,17 +70,24 @@ def handle_detectface(rollup: Rollup, data: RollupData) -> bool:
     face = model.transform(payload.image)
     embedding = format_embedding(face['embedding'])
 
-    match = {
+    match = vdb.get_nearest_key(face['embedding'])
+
+    resp_match = None
+
+    if match is not None:
+        resp_match = {
+            'wallet': match[0],
+            'distance': match[1],
+            'balance': 123
+        }
+
+    response = {
         "pixels": face['box'][-1] * face['box'][-2],
         "confidence": face['confidence'],
         "embedding": embedding,
-        "match": {
-            "wallet": "0xdeadbeef9d603c29af07a9b54b13f3e2deadbeef",
-            "distance": 0.35,
-            "balance": 9,
-        }
+        "match": resp_match
     }
-    rollup.report(str2hex(json.dumps(match)))
+    rollup.report(str2hex(json.dumps(response)))
     return True
 
 
