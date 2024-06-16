@@ -8,7 +8,6 @@ from .model import model, format_embedding
 from .vector_db import vdb, parse_embedding
 
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 dapp = DApp()
 json_router = JSONRouter()
 dapp.add_router(json_router)
@@ -110,4 +109,8 @@ def handle_inspect(rollup: Rollup, data: RollupData) -> bool:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s %(name)-22s %(levelname)-8s %(message)s',
+    )
     dapp.run()
