@@ -1,7 +1,10 @@
 import json
 import logging
 
+from pydantic import BaseModel
 from cartesi import DApp, Rollup, RollupData, JSONRouter
+
+from .model import model, format_embedding
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -38,17 +41,23 @@ def handle_dispense_beer(rollup: Rollup, data: RollupData):
     rollup.report(str2hex(json.dumps(result)))
 
 
+class DetectFaceInput(BaseModel):
+    op: str
+    image: str
+
+
 @json_router.inspect({"op": "detectface"})
 def handle_detectface(rollup: Rollup, data: RollupData) -> bool:
-    import numpy as np
-    import base64
-    vec = np.zeros(shape=(512,), dtype='float16')
-    vec = base64.b64encode(vec.tobytes()).decode('ascii')
+
+    payload = DetectFaceInput.parse_obj(data.json_payload())
+
+    face = model.transform(payload.image)
+    embedding = format_embedding(face['embedding'])
 
     match = {
-        "pixels": 130544,
-        "confidence": 0.9998,
-        "embedding": vec,
+        "pixels": face['box'][-1] * face['box'][-2],
+        "confidence": face['confidence'],
+        "embedding": embedding,
         "match": {
             "wallet": "0xdeadbeef9d603c29af07a9b54b13f3e2deadbeef",
             "distance": 0.35,
