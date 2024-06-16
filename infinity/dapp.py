@@ -13,9 +13,16 @@ json_router = JSONRouter()
 dapp.add_router(json_router)
 
 
+BALANCES = {}
+
+
 def str2hex(str):
     """Encodes a string as a hex string"""
     return "0x" + str.encode("utf-8").hex()
+
+######################################################################
+# Register Face
+######################################################################
 
 
 class RegisterFaceInput(BaseModel):
@@ -32,28 +39,64 @@ def handle_register_face(rollup: Rollup, data: RollupData):
     wallet = payload.wallet.lower()
     vec = parse_embedding(payload.embedding)
 
+    logging.info('Associating face to wallet %s', wallet)
     vdb.add_vector(key=wallet, vector=vec)
 
-    # TODO register balance
+    if wallet in BALANCES:
+        logging.info('Wallet %s already has a balance of %d. Not modifying.',
+                     wallet, BALANCES[wallet])
+    else:
+        logging.info('Registering balance of %d to wallet %s.',
+                     payload.init_balance, wallet)
+        BALANCES[wallet] = payload.init_balance
 
-    result = {"status": "ok", "msg": "Mock Implementation Successful"}
+    result = {"status": "ok", "msg": "Success"}
     rollup.report(str2hex(json.dumps(result)))
+
+######################################################################
+# Dispense Beer
+######################################################################
+
+
+class DispenseBeerInput(BaseModel):
+    op: str
+    embedding: str
 
 
 @json_router.advance({"op": "dispense_beer"})
 def handle_dispense_beer(rollup: Rollup, data: RollupData):
-    # TODO: Match face and dispense beer
+    payload = DispenseBeerInput.parse_obj(data.json_payload())
+    vec = parse_embedding(payload.embedding)
+    match = vdb.get_nearest_key(vec)
 
-    match = {
-        "wallet": "0xdeadbeef9d603c29af07a9b54b13f3e2deadbeef",
-        "distance": 0.35,
-        "balance": 9,
-        "dispense": True
+    if match is None:
+        logging.warning('No matches found for given embedding.')
+        rollup.notice(str2hex(json.dumps({})))
+        status = {"status": "error", "msg": "No matches found."}
+        rollup.report(str2hex(json.dumps(status)))
+        return True
+
+    status = {"status": "ok", "msg": "Success"}
+    dispense = True
+
+    wallet, distance = match
+
+    if BALANCES[wallet] >= 1:
+        balance = BALANCES[wallet] - 1
+        BALANCES[wallet] = balance
+    else:
+        status = {"status": "error", "msg": "Insufficient funds."}
+        dispense = False
+
+    resp = {
+        "wallet": wallet,
+        "distance": distance,
+        "balance": balance,
+        "dispense": dispense,
     }
-    rollup.notice(str2hex(json.dumps(match)))
-
-    result = {"status": "ok", "msg": "Mock Implementation Successful"}
-    rollup.report(str2hex(json.dumps(result)))
+    rollup.notice(str2hex(json.dumps(resp)))
+    rollup.report(str2hex(json.dumps(status)))
+    return True
 
 
 class DetectFaceInput(BaseModel):
@@ -77,7 +120,7 @@ def handle_detectface(rollup: Rollup, data: RollupData) -> bool:
         resp_match = {
             'wallet': match[0],
             'distance': match[1],
-            'balance': 123
+            'balance': BALANCES.get(match[0], -1),
         }
 
     response = {
